@@ -1,4 +1,3 @@
-text
 import logging
 import os
 from huggingface_hub import InferenceClient
