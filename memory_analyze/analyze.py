@@ -30,7 +30,7 @@ def analyze_data(source, content, query='', model_client=None, model_type='hf', 
                 model_client = InferenceClient(model='mistralai/Mixtral-8x7B-Instruct-v0.1', token=api_key)
             elif model_type == 'gemini':
                 genai.configure(api_key=api_key)
-                model_client = genai.GenerativeModel('gemini-1.5-flash')
+                model_client = genai.GenerativeModel('gemini-2.0-flash')
             elif model_type == 'groq':
                 model_client = Groq(api_key=api_key)
             else:
