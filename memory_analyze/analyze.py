@@ -123,16 +123,16 @@ def call_xai(app_config, model_name, prompt):
     except Exception as e:
         raise Exception(f"xAI API Error: {e}")
 
-def analyze_data(source, content, query='', model_client=None, model_type='hf', api_key=None):
+def analyze_data(source, content, query='', model_client=None, model_type='gemini', api_key=None):
     """Analyze content to extract facts with truthfulness and importance scores."""
     logger.debug(f'Analyzing data: source={source}, content={content}, query={query}, model_type={model_type}')
 
     # App config with API keys from environment if not provided
     app_config = {
-        'HF_TOKEN': api_key or os.environ.get('HF_TOKEN'),
-        'GOOGLE_GEMINI_API_KEY': os.environ.get('GOOGLE_GEMINI_API_KEY'),
-        'GROQ_API_KEY': os.environ.get('GROQ_API_KEY'),
-        'XAI_API_KEY': os.environ.get('XAI_API_KEY')
+        'HF_TOKEN': os.environ.get('HF_TOKEN',''),
+        'GOOGLE_GEMINI_API_KEY': os.environ.get('GOOGLE_GEMINI_API_KEY',''),
+        'GROQ_API_KEY': os.environ.get('GROQ_API_KEY',''),
+        'XAI_API_KEY': os.environ.get('XAI_API_KEY','')
     }
 
     # Model names
