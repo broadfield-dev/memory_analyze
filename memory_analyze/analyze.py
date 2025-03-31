@@ -124,15 +124,15 @@ def call_xai(app_config, model_name, prompt):
         raise Exception(f"xAI API Error: {e}")
 
 def analyze_data(source, content, query='', model_client=None, model_type='gemini', api_key=None):
-    """Analyze content to extract facts with truthfulness and importance scores."""
+    """Analyze content to extract facts with truthfulness, importance, and sentiment scores."""
     logger.debug(f'Analyzing data: source={source}, content={content}, query={query}, model_type={model_type}')
 
     # App config with API keys from environment if not provided
     app_config = {
-        'HF_TOKEN': os.environ.get('HF_TOKEN',''),
-        'GOOGLE_GEMINI_API_KEY': os.environ.get('GOOGLE_GEMINI_API_KEY',''),
-        'GROQ_API_KEY': os.environ.get('GROQ_API_KEY',''),
-        'XAI_API_KEY': os.environ.get('XAI_API_KEY','')
+        'HF_TOKEN': os.environ.get('HF_TOKEN', ''),
+        'GOOGLE_GEMINI_API_KEY': os.environ.get('GOOGLE_GEMINI_API_KEY', ''),
+        'GROQ_API_KEY': os.environ.get('GROQ_API_KEY', ''),
+        'XAI_API_KEY': os.environ.get('XAI_API_KEY', '')
     }
 
     # Model names
@@ -143,7 +143,12 @@ def analyze_data(source, content, query='', model_client=None, model_type='gemin
         'xai': 'grok'  # Hypothetical xAI model name
     }
 
-    prompt = f'Source: {source}\nContent: {content}\nQuery: {query}\nExtract key factual statements with estimated truthfulness (0-1) and importance (0-1). Return as a list of JSON objects like: {{\'text\': \'fact\', \'truthfulness\': 0.7, \'importance\': 0.8}}'
+    prompt = (
+        f'Source: {source}\nContent: {content}\nQuery: {query}\n'
+        f'Extract key factual statements with estimated truthfulness (0-1), importance (0-1), '
+        f'and sentiment (positive, negative, neutral). Return as a list of JSON objects like: '
+        f'{{\'text\': \'fact\', \'truthfulness\': 0.7, \'importance\': 0.8, \'sentiment\': \'positive\'}}'
+    )
 
     try:
         if model_type == 'hf':
@@ -174,29 +179,32 @@ def analyze_data(source, content, query='', model_client=None, model_type='gemin
                 facts = json.loads(full_response)
             else:
                 logger.warning(f'Response not a JSON list: {full_response}')
-                facts = [{'text': content, 'truthfulness': 0.5, 'importance': 0.5}]
+                facts = [{'text': content, 'truthfulness': 0.5, 'importance': 0.5, 'sentiment': 'neutral'}]
         except json.JSONDecodeError as e:
             logger.error(f'JSON parsing failed: {e}, response={full_response}')
-            facts = [{'text': content, 'truthfulness': 0.5, 'importance': 0.5}]
+            facts = [{'text': content, 'truthfulness': 0.5, 'importance': 0.5, 'sentiment': 'neutral'}]
 
         # Validate and normalize facts
         valid_facts = []
+        valid_sentiments = {'positive', 'negative', 'neutral'}
         for fact in facts:
-            if not isinstance(fact, dict) or not all(k in fact for k in ['text', 'truthfulness', 'importance']):
+            if not isinstance(fact, dict) or not all(k in fact for k in ['text', 'truthfulness', 'importance', 'sentiment']):
                 logger.warning(f'Invalid fact format: {fact}')
-                valid_facts.append({'text': fact.get('text', content), 'truthfulness': 0.5, 'importance': 0.5})
+                valid_facts.append({'text': fact.get('text', content), 'truthfulness': 0.5, 'importance': 0.5, 'sentiment': 'neutral'})
             else:
                 try:
                     fact['truthfulness'] = max(0.0, min(1.0, float(fact['truthfulness'])))
                     fact['importance'] = max(0.0, min(1.0, float(fact['importance'])))
+                    sentiment = fact.get('sentiment', 'neutral').lower()
+                    fact['sentiment'] = sentiment if sentiment in valid_sentiments else 'neutral'
                     valid_facts.append(fact)
                 except (ValueError, TypeError) as e:
                     logger.error(f'Invalid numeric value in fact: {fact}, error: {e}')
-                    valid_facts.append({'text': fact['text'], 'truthfulness': 0.5, 'importance': 0.5})
+                    valid_facts.append({'text': fact['text'], 'truthfulness': 0.5, 'importance': 0.5, 'sentiment': 'neutral'})
 
         logger.info(f'Processed facts: {valid_facts}')
         return valid_facts
 
     except Exception as e:
         logger.error(f'Error during analysis: {e}')
-        return [{'text': f'Analysis failed: {str(e)}', 'truthfulness': 0.1, 'importance': 0.1}]
+        return [{'text': f'Analysis failed: {str(e)}', 'truthfulness': 0.1, 'importance': 0.1, 'sentiment': 'neutral'}]
